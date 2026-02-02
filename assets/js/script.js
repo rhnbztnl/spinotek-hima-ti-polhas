@@ -1,30 +1,7 @@
-// Project Data with Tech Stacks
-const projects = [
-    {
-        name: "Eco-Track Web",
-        folder: "eco-track",
-        description: "Zero-emission tracking system built with lightning efficiency and native code optimization.",
-        tech: ["html5", "tailwindcss", "javascript"],
-        status: "STABLE",
-        icon: "🌱"
-    },
-    {
-        name: "HIMA TI Pro",
-        folder: "hima-dashboard",
-        description: "Next-gen dashboard for organization management and member lifecycle automation.",
-        tech: ["react", "tailwindcss", "javascript"],
-        status: "BETA",
-        icon: "⚡"
-    },
-    {
-        name: "Spinotek Hack",
-        folder: "example-project",
-        description: "The official high-performance boilerplate for the Spinotek x HIMA TI challenge.",
-        tech: ["html5", "css3", "javascript"],
-        status: "LIVE",
-        icon: "🚀"
-    }
-];
+// GitHub Repository Config
+const REPO_OWNER = 'Spinotek-Organization';
+const REPO_NAME = 'spinotek-hima-ti-polhas';
+const IGNORED_FOLDERS = ['assets', '.git', '.github', '.vscode'];
 
 // Typing Animation Phrases
 const typingPhrases = [
@@ -36,15 +13,107 @@ const typingPhrases = [
 ];
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initialize Typing Animation
-    initTypingAnimation();
+    // 1. Fetch & Render Projects (Priority)
+    fetchProjects();
 
-    // 2. Render Projects
-    renderProjects(projects);
+    // 2. Initialize Typing Animation
+    try {
+        if (document.getElementById('typing-text')) {
+            initTypingAnimation();
+        }
+    } catch (e) {
+        console.error("Failed to init typing:", e);
+    }
 
     // 3. Interactions
     setupParallax();
+    initMobileMenu();
 });
+
+function initMobileMenu() {
+    const toggle = document.getElementById('mobile-toggle');
+    const menu = document.getElementById('nav-menu');
+    
+    if (toggle && menu) {
+        toggle.addEventListener('click', () => {
+            menu.classList.toggle('hidden');
+            menu.classList.toggle('flex');
+        });
+    }
+}
+
+async function fetchProjects() {
+    const grid = document.getElementById('project-grid');
+    if (!grid) return;
+
+    try {
+        const response = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/`);
+        
+        if (!response.ok) {
+            throw new Error(`GitHub API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Filter for directories that are not in the ignored list
+        const projectFolders = data.filter(item => 
+            item.type === 'dir' && !IGNORED_FOLDERS.includes(item.name)
+        );
+
+        if (projectFolders.length === 0) {
+            renderEmptyState(grid);
+        } else {
+            // Map GitHub data to our project structure
+            // Note: Since we only have the folder name, we use defaults for other fields
+            const projects = projectFolders.map(folder => ({
+                name: formatProjectName(folder.name),
+                folder: folder.name,
+                description: "Click to explore this showcase.",
+                tech: ["html5", "css3", "javascript"], // Default stack assumption
+                status: "LIVE",
+                icon: "🚀"
+            }));
+            
+            renderProjects(projects, grid);
+        }
+
+    } catch (error) {
+        console.error("Failed to fetch projects:", error);
+        renderEmptyState(grid, true);
+    }
+}
+
+function formatProjectName(folderName) {
+    // Convert 'my-project-name' to 'My Project Name'
+    return folderName
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+function renderEmptyState(grid, isError = false) {
+    grid.innerHTML = `
+        <div class="col-span-full py-20 text-center space-y-6">
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full ${isError ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-400'} mb-4">
+                ${isError 
+                    ? '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>'
+                    : '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>'
+                }
+            </div>
+            <h3 class="text-2xl font-bold text-slate-900">${isError ? 'System Offline' : 'Waiting for Submissions'}</h3>
+            <p class="text-slate-500 max-w-md mx-auto">
+                ${isError 
+                    ? 'Could not connect to the repository. Please try again later.' 
+                    : 'Projects will appear here automatically once participants submit their work via Pull Request.'}
+            </p>
+            ${!isError ? `
+            <a href="https://github.com/${REPO_OWNER}/${REPO_NAME}" target="_blank" class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-white font-bold hover:bg-blue-700 transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                Submit Project
+            </a>` : ''}
+        </div>
+    `;
+}
 
 function initTypingAnimation() {
     const target = document.getElementById('typing-text');
@@ -81,16 +150,14 @@ function initTypingAnimation() {
     type();
 }
 
-function renderProjects(data) {
-    const grid = document.getElementById('project-grid');
-    if (!grid) return;
-    
+function renderProjects(data, grid) {
     grid.innerHTML = '';
 
     data.forEach(project => {
         const card = document.createElement('div');
         card.className = 'group relative bg-white border border-slate-200 p-8 rounded-[32px] transition-all duration-500 hover:shadow-2xl hover:shadow-primary/10 hover:-translate-y-2 cursor-pointer flex flex-col justify-between';
-        card.onclick = () => window.location.href = `./${project.folder}/index.html`;
+        // Use folder name for simple linking
+        card.onclick = () => window.location.href = `./${project.folder}/`;
 
         card.innerHTML = `
             <div>
@@ -103,7 +170,7 @@ function renderProjects(data) {
                     </span>
                 </div>
 
-                <h3 class="text-2xl font-black text-slate-900 mb-4 group-hover:text-primary transition-colors">${project.name}</h3>
+                <h3 class="text-2xl font-black text-slate-900 mb-4 group-hover:text-primary transition-colors capitalize">${project.name}</h3>
                 <p class="text-slate-500 text-[15px] leading-relaxed mb-8 font-medium">${project.description}</p>
             </div>
 
